@@ -64,6 +64,20 @@ async function main() {
         let saved = 0;
         const seenUrls = new Set();
 
+        // ===== STEALTH: User-Agent Rotation Pool =====
+        const USER_AGENTS = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+        ];
+        const getRandomUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+        const randomDelay = (min = 100, max = 300) => new Promise(r => setTimeout(r, min + Math.random() * (max - min)));
+
         function extractFromJsonLd($) {
             const scripts = $('script[type="application/ld+json"]');
             for (let i = 0; i < scripts.length; i++) {
@@ -96,12 +110,12 @@ async function main() {
 
         function extractBooksFromList($, base) {
             const books = [];
-            
+
             // Try to extract from book items - Goodreads uses .bookTitle class and .leftAlignedImage for book containers
             $('.leftAlignedImage, .elementList').each((_, elem) => {
                 try {
                     const $elem = $(elem);
-                    
+
                     // Extract book URL
                     const bookLink = $elem.find('a.bookTitle').first();
                     const bookUrl = bookLink.attr('href');
@@ -168,27 +182,73 @@ async function main() {
 
         const crawler = new CheerioCrawler({
             proxyConfiguration: proxyConf,
-            maxRequestRetries: 3,
+
+            // ===== PERFORMANCE: 3x Speed Increase =====
+            maxConcurrency: 15,                    // Increased from 5 (safe for HTTP-only CheerioCrawler)
+            minConcurrency: 3,                     // Maintain minimum parallelism  
+            maxRequestsPerMinute: 150,             // Rate limiting for stealth
+            requestHandlerTimeoutSecs: 45,         // Faster timeout for quick failure recovery
+            navigationTimeoutSecs: 30,             // Faster navigation timeout
+
+            // ===== SESSION POOL: Anti-Blocking =====
             useSessionPool: true,
-            maxConcurrency: 5,
-            requestHandlerTimeoutSecs: 90,
+            sessionPoolOptions: {
+                maxPoolSize: 50,                   // Large pool for rotation
+                sessionOptions: {
+                    maxUsageCount: 20,             // Rotate sessions after 20 uses
+                    maxErrorScore: 2,              // Quick retire on errors
+                },
+                blockedStatusCodes: [401, 403, 429, 503], // Auto-retire blocked sessions
+            },
+            maxRequestRetries: 4,                  // More retries with exponential backoff
+
+            // ===== STEALTH: Browser Fingerprint Headers =====
             preNavigationHooks: [
-                (crawlingContext) => {
+                async (crawlingContext) => {
+                    // Random delay for human-like request timing
+                    await randomDelay(80, 200);
+
+                    // Rotate User-Agent per request
+                    const ua = getRandomUA();
+
+                    // Full browser fingerprint headers
+                    crawlingContext.request.headers = {
+                        ...crawlingContext.request.headers,
+                        'User-Agent': ua,
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache',
+                        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                        'Sec-Ch-Ua-Mobile': '?0',
+                        'Sec-Ch-Ua-Platform': '"Windows"',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'same-origin',
+                        'Sec-Fetch-User': '?1',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Referer': 'https://www.goodreads.com/',
+                    };
+
+                    // Add cookies if provided
                     if (cookieHeader) {
-                        crawlingContext.request.headers = {
-                            ...crawlingContext.request.headers,
-                            Cookie: cookieHeader,
-                        };
+                        crawlingContext.request.headers.Cookie = cookieHeader;
                     }
                 }
             ],
+
+            // ===== ADDITIONAL STEALTH OPTIONS =====
+            additionalMimeTypes: ['application/json', 'text/plain'],
+            ignoreSslErrors: true,
+
             async requestHandler({ request, $, enqueueLinks, log: crawlerLog }) {
                 const label = request.userData?.label || 'LIST';
                 const pageNo = request.userData?.pageNo || 1;
 
                 if (label === 'LIST') {
-                    crawlerLog.info(`Scraping shelf page ${pageNo}: ${request.url}`);
-                    
+                    crawlerLog.info(`📖 Shelf page ${pageNo}: ${request.url}`);
+
                     const books = extractBooksFromList($, request.url);
                     crawlerLog.info(`Found ${books.length} books on page ${pageNo}`);
 
@@ -200,16 +260,16 @@ async function main() {
                         const remaining = RESULTS_WANTED - saved;
                         const toEnqueue = books.slice(0, Math.max(0, remaining));
                         if (toEnqueue.length) {
-                            await enqueueLinks({ 
-                                urls: toEnqueue.map(b => b.url), 
-                                userData: { label: 'DETAIL', basicInfo: toEnqueue } 
+                            await enqueueLinks({
+                                urls: toEnqueue.map(b => b.url),
+                                userData: { label: 'DETAIL', basicInfo: toEnqueue }
                             });
                         }
                     } else if (books.length > 0) {
                         const remaining = RESULTS_WANTED - saved;
                         const toPush = books.slice(0, Math.max(0, remaining));
-                        if (toPush.length) { 
-                            await Dataset.pushData(toPush.map(b => ({ ...b, _source: 'goodreads' }))); 
+                        if (toPush.length) {
+                            await Dataset.pushData(toPush.map(b => ({ ...b, _source: 'goodreads' })));
                             saved += toPush.length;
                             crawlerLog.info(`Saved ${toPush.length} books (total: ${saved})`);
                         }
@@ -236,7 +296,7 @@ async function main() {
                     if (saved >= RESULTS_WANTED) return;
                     try {
                         crawlerLog.info(`Scraping book details: ${request.url}`);
-                        
+
                         // Try JSON-LD first
                         const jsonData = extractFromJsonLd($);
                         const data = jsonData || {};
@@ -330,8 +390,8 @@ async function main() {
                         await Dataset.pushData(item);
                         saved++;
                         crawlerLog.info(`Saved book: "${item.title}" (${saved}/${RESULTS_WANTED})`);
-                    } catch (err) { 
-                        crawlerLog.error(`DETAIL ${request.url} failed: ${err.message}`); 
+                    } catch (err) {
+                        crawlerLog.error(`DETAIL ${request.url} failed: ${err.message}`);
                     }
                 }
             }
