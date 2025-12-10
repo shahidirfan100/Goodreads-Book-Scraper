@@ -42,7 +42,7 @@
       "type": "integer",
       "description": "Maximum number of books to scrape. Set a reasonable limit to control run time and costs.",
       "minimum": 1,
-      "default": 100,
+      "default": 50,
       "editor": "number",
       "maximum": 10000
     },
@@ -62,7 +62,9 @@
       "editor": "proxy",
       "default": {
         "useApifyProxy": true,
-        "apifyProxyGroups": ["RESIDENTIAL"]
+        "apifyProxyGroups": [
+          "RESIDENTIAL"
+        ]
       }
     },
     "cookies": {
