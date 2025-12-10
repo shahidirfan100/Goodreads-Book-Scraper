@@ -1,0 +1,84 @@
+{
+  "title": "Goodreads Book Scraper",
+  "description": "Extract comprehensive book data from Goodreads shelves. Provide a shelf name or direct Goodreads shelf URL. The scraper handles pagination automatically and can fetch detailed information from individual book pages.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "startUrl": {
+      "title": "Start URL",
+      "type": "string",
+      "description": "Direct Goodreads shelf URL to scrape (e.g., https://www.goodreads.com/shelf/show/fantasy). If provided, this overrides the Shelf parameter.",
+      "editor": "textfield",
+      "example": "https://www.goodreads.com/shelf/show/fantasy"
+    },
+    "startUrls": {
+      "title": "Multiple Start URLs",
+      "type": "array",
+      "description": "Array of Goodreads shelf URLs to scrape multiple shelves in one run.",
+      "editor": "requestListSources",
+      "prefill": [
+        {
+          "url": "https://www.goodreads.com/shelf/show/fantasy"
+        }
+      ]
+    },
+    "shelf": {
+      "title": "Shelf Name",
+      "type": "string",
+      "description": "Name of the Goodreads shelf to scrape (e.g., 'fantasy', 'science-fiction', 'romance'). Used only if Start URL is not provided.",
+      "editor": "textfield",
+      "prefill": "fantasy",
+      "example": "fantasy"
+    },
+    "collectDetails": {
+      "title": "Collect detailed book information",
+      "type": "boolean",
+      "description": "Enable to visit each book's page and extract comprehensive details including full description, ISBN, publisher, genres, and more. Disable for faster scraping with basic information only.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "results_wanted": {
+      "title": "Maximum number of books",
+      "type": "integer",
+      "description": "Maximum number of books to scrape. Set a reasonable limit to control run time and costs.",
+      "minimum": 1,
+      "default": 100,
+      "editor": "number",
+      "maximum": 10000
+    },
+    "max_pages": {
+      "title": "Maximum pages to scrape",
+      "type": "integer",
+      "description": "Safety limit on the number of shelf pages to visit. Each page typically contains 50 books. Note: Non-logged users can only access the first page.",
+      "minimum": 1,
+      "editor": "number",
+      "default": 10,
+      "maximum": 100
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Proxy settings for the scraper. Residential proxies recommended for accessing multiple pages. Required for pagination beyond the first page.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": ["RESIDENTIAL"]
+      }
+    },
+    "cookies": {
+      "title": "Authentication cookies",
+      "type": "string",
+      "description": "Raw Cookie header string from a logged-in Goodreads session. Required for accessing paginated results beyond the first page. Export from browser DevTools.",
+      "editor": "textfield",
+      "sectionCaption": "Advanced Settings"
+    },
+    "cookiesJson": {
+      "title": "Cookies (JSON format)",
+      "type": "string",
+      "description": "Cookies in JSON format. Accepts array format: [{\"name\":\"cookie_name\",\"value\":\"cookie_value\"}] or object format: {\"cookie_name\":\"cookie_value\"}",
+      "editor": "textarea"
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

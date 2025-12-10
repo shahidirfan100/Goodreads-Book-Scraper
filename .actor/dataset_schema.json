@@ -1,0 +1,125 @@
+{
+  "actorSpecification": 1,
+  "fields": {},
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": [
+          "title",
+          "author",
+          "rating",
+          "ratingCount",
+          "reviewCount",
+          "publishDate",
+          "url"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "title": {
+            "label": "Book Title",
+            "format": "text"
+          },
+          "author": {
+            "label": "Author",
+            "format": "text"
+          },
+          "rating": {
+            "label": "Rating",
+            "format": "text"
+          },
+          "ratingCount": {
+            "label": "Ratings",
+            "format": "number"
+          },
+          "reviewCount": {
+            "label": "Reviews",
+            "format": "number"
+          },
+          "publishDate": {
+            "label": "Published",
+            "format": "text"
+          },
+          "url": {
+            "label": "URL",
+            "format": "link"
+          }
+        }
+      }
+    },
+    "detailed": {
+      "title": "Detailed View",
+      "transformation": {
+        "fields": [
+          "title",
+          "author",
+          "rating",
+          "ratingCount",
+          "reviewCount",
+          "description",
+          "genres",
+          "isbn",
+          "publisher",
+          "publishDate",
+          "image",
+          "url"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "title": {
+            "label": "Title",
+            "format": "text"
+          },
+          "author": {
+            "label": "Author",
+            "format": "text"
+          },
+          "rating": {
+            "label": "Rating",
+            "format": "text"
+          },
+          "ratingCount": {
+            "label": "Total Ratings",
+            "format": "number"
+          },
+          "reviewCount": {
+            "label": "Total Reviews",
+            "format": "number"
+          },
+          "description": {
+            "label": "Description",
+            "format": "text"
+          },
+          "genres": {
+            "label": "Genres",
+            "format": "array"
+          },
+          "isbn": {
+            "label": "ISBN",
+            "format": "text"
+          },
+          "publisher": {
+            "label": "Publisher",
+            "format": "text"
+          },
+          "publishDate": {
+            "label": "Publication Date",
+            "format": "text"
+          },
+          "image": {
+            "label": "Cover Image",
+            "format": "image"
+          },
+          "url": {
+            "label": "Goodreads URL",
+            "format": "link"
+          }
+        }
+      }
+    }
+  }
+}
